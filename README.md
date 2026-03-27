@@ -20,6 +20,7 @@ Apple publishes none of this information. Every LLM inference engine on Mac (lla
 - [MIL Programming Reference](#mil-programming-reference)
 - [Chunked FFN for Large Models](#chunked-ffn-for-large-models)
 - [Methodology](#methodology)
+  - [Human-AI Collaboration](#human-ai-collaboration)
 
 ---
 
@@ -378,6 +379,20 @@ The investigation followed this arc:
 4. **Can mul + reduce_sum implement matvec?** → Yes, with same-shape inputs. ([`test_dynamic7.cpp`](tests/test_dynamic7.cpp))
 5. **Why is mul unreliable with N-broadcasting?** → The `tile` operation was corrupting global ANE state. After removing `tile`, N-broadcast `mul` failures disappeared in our single-op tests, but we chose same-shape inputs for production reliability. ([`test_dynamic16.cpp`](tests/test_dynamic16.cpp))
 6. **Working solution?** → CPU-side tiling (`memcpy`) + same-shape `mul` + `reduce_sum`. Measured 1.65ms at 2560×2560, verified correct at all tested sizes. ([`test_matvec_final.cpp`](tests/test_matvec_final.cpp))
+
+### Human-AI Collaboration
+
+This research was conducted as a collaboration between a human researcher and Claude Opus 4.6 (Anthropic), working through [pi](https://github.com/mariozechner/pi-coding-agent), a terminal-based coding agent. The workflow operated as a tight loop:
+
+1. **Human** identified the next question to investigate and described the hardware behavior observed so far
+2. **Claude** wrote the C++ test program — MIL program generation, IOSurface setup, CPU reference implementation, comparison logic
+3. **Human** compiled and ran the test, pasted back the terminal output
+4. **Claude** analyzed the results, updated the working model of ANE behavior, and proposed the next hypothesis
+5. Repeat
+
+Neither participant could have done this alone efficiently. The human had the hardware, the intuition for which questions mattered, and could observe behaviors that didn't appear in any documentation. Claude could rapidly generate correct C++ test programs against an undocumented API, hold the full state of 25 experiments in context, and reason about what each result implied for the hardware model.
+
+The entire investigation — from "can conv accept dynamic weights?" to a working 2560×2560 dynamic matvec — took a single evening. The 25 test programs were written, run, and analyzed sequentially, each one informed by the results of the previous. Dead ends (tile, N-broadcast mul, dynamic conv) were identified and discarded within 1–2 test iterations rather than hours of manual debugging.
 
 ---
 
