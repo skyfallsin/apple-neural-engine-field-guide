@@ -10,8 +10,58 @@ Apple publishes none of this information. Every LLM inference engine on Mac (lla
 
 ---
 
+## Quick Start: Run Qwen3-4B on the Neural Engine
+
+The findings in this guide are used by [ANE-LM](https://github.com/skyfallsin/ANE-LM) to run LLM inference directly on the ANE. Here's how to get Qwen3-4B running:
+
+### Requirements
+
+- macOS 13.0+
+- Apple Silicon (M1/M2/M3/M4/M5)
+- ~8 GB disk space for the model weights
+
+### Build
+
+```bash
+git clone https://github.com/skyfallsin/ANE-LM.git
+cd ANE-LM
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+```
+
+### Download the Model
+
+Download [Qwen3-4B](https://huggingface.co/Qwen/Qwen3-4B) in safetensors format from HuggingFace:
+
+```bash
+# Requires huggingface-cli: pip install huggingface_hub
+huggingface-cli download Qwen/Qwen3-4B --local-dir Qwen3-4B
+```
+
+### Run
+
+```bash
+# Interactive chat
+./build/ane-lm chat --model Qwen3-4B
+
+# Single prompt
+./build/ane-lm generate --model Qwen3-4B --prompt "Explain the Navier-Stokes equations" --max-tokens 200
+
+# Optional: pre-convert weights (BF16 → FP16, speeds up subsequent loads)
+./build/ane-lm convert --model Qwen3-4B
+```
+
+First run compiles 226 ANE kernels (~28s). Subsequent runs load from persistent cache (~8s). Generation runs at ~6.2 tok/s — the bottleneck is dispatch overhead, not compute (see [Dispatch Overhead](#dispatch-overhead)).
+
+### What's Happening Under the Hood
+
+Each token generation dispatches 216 ANE kernel evaluations (6 per layer × 36 layers). Every weight matrix is baked into a compiled ANE convolution kernel. Attention and norms run on CPU between ANE dispatches. The chunked FFN strategy (4 chunks for Qwen3-4B's intermediate_size=9728) is what makes 4B-scale models fit — the original codebase was limited to ~0.8B. See the [ANE-LM README](https://github.com/skyfallsin/ANE-LM) for full architecture details.
+
+---
+
 ## Table of Contents
 
+- [Quick Start: Run Qwen3-4B on the Neural Engine](#quick-start-run-qwen3-4b-on-the-neural-engine)
 - [IOSurface Layout](#iosurface-layout)
 - [Operations on Runtime Tensors](#operations-on-runtime-tensors)
 - [The `tile` Poison](#the-tile-poison)
