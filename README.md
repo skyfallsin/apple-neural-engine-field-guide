@@ -23,6 +23,7 @@ Apple publishes none of this information. Every LLM inference engine on Mac (lla
 - [Chunked FFN for Large Models](#chunked-ffn-for-large-models)
 - [Methodology](#methodology)
   - [Human-AI Collaboration](#human-ai-collaboration)
+- [What's Next](#whats-next)
 
 ---
 
@@ -395,6 +396,36 @@ A key challenge was managing the tension between context window size and model o
 Neither participant could have done this alone efficiently. The human had the intuition for which questions mattered, could recognize when results pointed toward a hardware constraint vs. a software bug, and kept the context budget under control. Claude could rapidly generate correct C++ against an undocumented API, execute the full write-compile-run-analyze cycle autonomously, and reason about what each result implied for the hardware model.
 
 The entire investigation — from "can conv accept dynamic weights?" to a working 2560×2560 dynamic matvec — took a single evening. Dead ends (tile, N-broadcast mul, dynamic conv) were identified and discarded within 1–2 test iterations rather than hours of manual debugging.
+
+---
+
+## What's Next
+
+Qwen3-4B runs at ~6.2 tok/s on ANE. The [dispatch overhead measurements](#dispatch-overhead) show that 99.9% of wall time is CPU↔ANE coordination, not compute. This is the roadmap for closing that gap.
+
+### Near-term: Fewer Dispatches per Token
+
+The current architecture uses 216 dispatches per token (6 per layer × 36 layers). Each dispatch costs ~0.75ms regardless of how much compute it contains.
+
+- **Fuse attention projections + FFN further.** Today Q/K/V are fused into one dispatch and SwiGLU FFN is one dispatch, but the layer still requires 6 dispatches (QKV proj, Q rope, K rope, attention output proj, FFN, layer norm). Fusing rope into the QKV kernel and layer norm into the FFN kernel could cut dispatches per layer from 6 to 2–3, roughly doubling throughput.
+- **Move attention to ANE.** Attention currently runs on CPU between the projection dispatches. If the full attention computation (softmax, matmul with V) can be expressed in MIL ops that work on runtime tensors, the entire layer could become 1–2 dispatches. This requires investigating whether `softmax` and `matmul`-equivalent patterns work on runtime IOSurfaces — neither has been tested yet.
+
+### Medium-term: Batch Prefill
+
+During prompt processing (prefill), each token is currently dispatched independently. Processing N tokens per dispatch would amortize the 0.75ms overhead across N tokens. The ANE's 32-wide vector unit and the `[N, C, H, W]` tensor layout suggest batch processing is architecturally feasible — the H dimension is unused (always 1) and could represent sequence position. This is unexplored territory.
+
+### Longer-term: Quantization and Larger Models
+
+- **INT8/INT4 weights.** Quantization would reduce IOSurface write time (currently 0.27ms for W at 2560×2560 FP16) and may allow larger kernels before chunking is needed. However, it will not reduce dispatch count, so the benefit is bounded by the overhead-dominated profile. Worth investigating once dispatch count is reduced.
+- **Larger models.** The chunked FFN strategy scales to arbitrary intermediate dimensions, and the compile-free-compile loop handles kernel budget limits. The main constraint for larger models is total compile/cache-load time at init and per-token dispatch count (which scales linearly with layer count).
+
+### Open Questions
+
+- Does `softmax` work on runtime IOSurface inputs?
+- Can the H dimension be used for sequence-parallel batch prefill?
+- What is the exact per-process kernel budget, and does it vary across M1/M2/M3/M4?
+- Are there undiscovered MIL ops that could replace the CPU-side tiling in dynamic matvec?
+- Does INT8 `conv` read from the same hardware weight bus, or does quantized inference use a different path?
 
 ---
 
