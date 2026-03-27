@@ -382,7 +382,7 @@ The investigation followed this arc:
 
 ### Human-AI Collaboration
 
-This research was conducted as a collaboration between a human researcher and Claude Opus 4.6 (Anthropic), working through [pi](https://github.com/mariozechner/pi-coding-agent), a terminal-based coding agent. The workflow operated as a tight loop:
+This research was conducted as a collaboration between a human researcher and Claude Opus 4.6 (Anthropic) — an experimental model on the Anthropic API — working through [pi](https://github.com/mariozechner/pi-coding-agent), a terminal-based coding agent. The workflow operated as a tight loop:
 
 1. **Human** identified the next question to investigate and described the hardware behavior observed so far
 2. **Claude** wrote the C++ test program — MIL program generation, IOSurface setup, CPU reference implementation, comparison logic
