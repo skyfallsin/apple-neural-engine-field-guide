@@ -366,22 +366,14 @@ This is what enabled Qwen3-4B — the original codebase only had single-kernel F
 
 ## Methodology
 
-These findings come from 25+ targeted test programs, each isolating a specific hypothesis about ANE behavior. The progression:
+These findings come from [25 targeted test programs](tests/), each isolating a specific hypothesis about ANE behavior. The full progression is documented in [`tests/README.md`](tests/README.md), but the key arc:
 
-1. **test_ane_limits** (1-4): Empirical compile count limits, max kernel sizes, cache behavior, unload/reload timing
-2. **test_ane_matmul**: Can conv accept dynamic weights? (No — compiles but fails at eval)
-3. **test_mil_variants**: Systematic sweep of MIL ops that accept runtime inputs
-4. **test_dynamic** (1-3): Dynamic conv attempts, multi-input programs, correctness
-5. **test_dynamic_conv**: Dedicated dynamic conv testing (confirmed: conv weights are hardware-bus only)
-6. **test_dynamic4**: Fresh investigation — do multi-input programs eval correctly at all?
-7. **test_dynamic5**: Discovery of mul+reduce_sum as alternative to conv
-8. **test_dynamic6**: The SP=32 hypothesis — why W=1 inputs fail
-9. **test_dynamic7-8**: Shape and broadcast systematic investigation
-10. **test_dynamic9**: First working dynamic matvec
-11. **test_dynamic10-11**: Reshape behavior on runtime tensors, N-broadcast reliability
-12. **test_dynamic12-15**: Minimal reproduction of mul failures, isolating exact configurations
-13. **test_dynamic16**: tile poison discovery and isolation
-14. **test_matvec_final**: Production-quality CPU-tiled dynamic matvec with benchmarks
+1. **Can conv accept dynamic weights?** → No. Hardware weight bus, not IOSurface path.
+2. **What ops work on runtime inputs?** → add, mul, reduce_sum, reshape. Not conv weights, not tile.
+3. **Why do some inputs fail silently?** → IOSurface W dimension must be ≥ 32 (SP).
+4. **Can we do matvec without conv?** → Yes: mul + reduce_sum.
+5. **Why is mul unreliable with broadcasting?** → tile poisons global ANE state.
+6. **Working solution?** → CPU-side tiling (memcpy) + same-shape mul + reduce_sum. 1.65ms at 2560×2560.
 
 Each test was designed to answer one specific question, with clear pass/fail criteria and CPU reference implementations for correctness verification.
 
@@ -389,7 +381,7 @@ Each test was designed to answer one specific question, with clear pass/fail cri
 
 ## Related Projects
 
-- **[ANE-LM](https://github.com/skyfallsin/ANE-LM)** — LLM inference on ANE using these findings. Runs Qwen3-4B at ~6 tok/s entirely on the Neural Engine.
+- **[ANE-LM](https://github.com/skyfallsin/ANE-LM)** — LLM inference on ANE using these findings. Runs Qwen3-4B at ~6 tok/s on the Neural Engine.
 - **[johnmai-dev/ANE-LM](https://github.com/johnmai-dev/ANE-LM)** — Original ANE inference project (Qwen3/3.5 support, ANE runtime, safetensors loader)
 - **[maderix/ANE](https://github.com/maderix/ANE)** — Neural network training on ANE via reverse-engineered APIs
 
