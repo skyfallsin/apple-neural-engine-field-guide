@@ -4,7 +4,7 @@ Hardware constraints, IOSurface layout rules, MIL programming patterns, and beha
 
 Apple publishes none of this information. Every LLM inference engine on Mac (llama.cpp, MLX, MLC-LLM) bypasses the Neural Engine entirely. This guide documents what we learned getting [LLM inference running directly on ANE](https://github.com/skyfallsin/ANE-LM), structured as a series of hypotheses, experiments, and measured results. All findings are reproducible via the [25 test programs](tests/) in this repo.
 
-**Hardware tested:** Apple M-series (M1/M2/M3/M4), macOS 13–15. Results may differ on A-series (iPhone/iPad) ANE.
+**Hardware tested:** MacBook Pro, Apple M3 Max (128 GB), macOS 26.3.1. Results may differ on other Apple Silicon chips or OS versions.
 
 ---
 
