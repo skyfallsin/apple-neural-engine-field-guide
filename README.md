@@ -12,7 +12,7 @@ Apple publishes none of this information. Every LLM inference engine on Mac (lla
 
 ## Quick Start: Run Qwen3-4B on the Neural Engine
 
-The findings in this guide are used by [ANE-LM](https://github.com/skyfallsin/ANE-LM) to run LLM inference directly on the ANE. Here's how to get Qwen3-4B running:
+Our fork of [ANE-LM](https://github.com/skyfallsin/ANE-LM) (originally by [johnmai-dev](https://github.com/johnmai-dev/ANE-LM)) uses these findings to run LLM inference directly on the ANE. Here's how to get Qwen3-4B running:
 
 ### Requirements
 
