@@ -384,17 +384,17 @@ The investigation followed this arc:
 
 ### Human-AI Collaboration
 
-This research was conducted as a collaboration between a human researcher and Claude Opus 4.6 (Anthropic) — an experimental model on the Anthropic API — working through [pi](https://github.com/mariozechner/pi-coding-agent), a terminal-based coding agent. The workflow operated as a tight loop:
+This research was conducted as a collaboration between a human researcher and Claude Opus 4.6 (Anthropic) — an experimental model on the Anthropic API — working through [pi](https://github.com/mariozechner/pi-coding-agent), a terminal-based coding agent. pi gives Claude direct access to the terminal — it writes files, compiles, runs tests, and reads output without any human copy-pasting in the loop. The workflow operated as a tight cycle:
 
-1. **Human** identified the next question to investigate and described the hardware behavior observed so far
-2. **Claude** wrote the C++ test program — MIL program generation, IOSurface setup, CPU reference implementation, comparison logic
-3. **Human** compiled and ran the test, pasted back the terminal output
-4. **Claude** analyzed the results, updated the working model of ANE behavior, and proposed the next hypothesis
-5. Repeat
+1. **Human** steered the investigation — identified the next question, provided domain intuition, and course-corrected when results were ambiguous
+2. **Claude** wrote the C++ test program, compiled it, ran it, read the output, analyzed the results, updated the working model of ANE behavior, and proposed the next hypothesis
+3. Repeat
 
-Neither participant could have done this alone efficiently. The human had the hardware, the intuition for which questions mattered, and could observe behaviors that didn't appear in any documentation. Claude could rapidly generate correct C++ test programs against an undocumented API, hold the full state of 25 experiments in context, and reason about what each result implied for the hardware model.
+Context management was key to making this work. Each test program was self-contained with clear pass/fail output, so Claude could read the result and immediately reason about what it implied without needing the full history of prior tests re-explained. The 25 test files and their outputs served as an external record that both participants could reference, keeping the investigation coherent across a long session.
 
-The entire investigation — from "can conv accept dynamic weights?" to a working 2560×2560 dynamic matvec — took a single evening. The 25 test programs were written, run, and analyzed sequentially, each one informed by the results of the previous. Dead ends (tile, N-broadcast mul, dynamic conv) were identified and discarded within 1–2 test iterations rather than hours of manual debugging.
+Neither participant could have done this alone efficiently. The human had the intuition for which questions mattered and could recognize when results pointed toward a hardware constraint vs. a software bug. Claude could rapidly generate correct C++ against an undocumented API, execute the full write-compile-run-analyze cycle autonomously, and reason about what each result implied for the hardware model.
+
+The entire investigation — from "can conv accept dynamic weights?" to a working 2560×2560 dynamic matvec — took a single evening. Dead ends (tile, N-broadcast mul, dynamic conv) were identified and discarded within 1–2 test iterations rather than hours of manual debugging.
 
 ---
 
